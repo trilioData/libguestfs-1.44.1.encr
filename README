@@ -20,3 +20,85 @@ The library is distributed under the LGPLv2+.  The programs are
 distributed under the GPLv2+.  Please see the files COPYING and
 COPYING.LIB for full license information.  The examples are under a
 very liberal license.
+
+####################################################################
+To build libguestfs from this repository
+
+Packages for CentOS 8
+=====================
+You may want to build the following packages if you are building on CentOS 8
+sudo yum -y install glibc-devel gcc flex bison ncurses-devel libtirpc-devel pcre-devel
+sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+sudo yum install https://rpmfind.net/linux/centos/8.4.2105/BaseOS/x86_64/os/Packages/augeas-1.12.0-6.el8.x86_64.rpm
+sudo yum install https://rpmfind.net/linux/centos/8.4.2105/PowerTools/x86_64/os/Packages/augeas-devel-1.12.0-6.el8.x86_64.rpm
+sudo yum install http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/file-devel-5.33-16.el8_3.1.x86_64.rpm
+sudo dnf install jansson-devel
+sudo dnf install jansson
+sudo dnf install fuse
+sudo dnf install fuse-level
+dnf --enablerepo=powertools install gperf
+sudo yum install libcap-devel hivex hivex-devel supermin
+ sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+sudo yum install patch make
+
+sudo dnf --enablerepo=powertools install libconfig-devel
+opam init
+sudo dnf --enablerepo=powertools install ocaml
+opam install ocamlfind
+opam install ocamlbuild
+sudo yum install http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/ocaml-hivex-1.3.18-20.module_el8.4.0+547+a85d02ba.x86_64.rpm
+sudo yum install http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/ocaml-hivex-devel-1.3.18-20.module_el8.4.0+547+a85d02ba.x86_64.rpm
+sudo yum install autoconf automake libtool gettext-devel
+sudo yum install yum-utils
+sudo dnf --enablerepo=powertools install ocaml-findlib-devel
+sudo dnf --enablerepo=powertools install glibc-static lua-devel rpcgen ocaml-ocamldoc po4a perl-Test-Pod perl-Test-Pod-Coverage
+sudo dnf --enablerepo=powertools install ocaml-camlp4
+sudo yum install https://cbs.centos.org/kojifiles/packages/ocaml-fileutils/0.5.2/12.el8/x86_64/ocaml-fileutils-0.5.2-12.el8.x86_64.rpm
+sudo yum install https://cbs.centos.org/kojifiles/packages/ocaml-gettext/0.3.7/7.el8/x86_64/ocaml-gettext-devel-0.3.7-7.el8.x86_64.rpm
+sudo yum install https://cbs.centos.org/kojifiles/packages/ocaml-fileutils/0.5.2/12.el8/x86_64/ocaml-fileutils-devel-0.5.2-12.el8.x86_64.rpm
+sudo yum install https://cbs.centos.org/kojifiles/packages/ocaml-fileutils/0.5.2/12.el8/x86_64/ocaml-fileutils-0.5.2-12.el8.x86_64.rpm
+sudo yum-builddep libguestfs
+sudo yum install syslinux
+sudo dnf install ocaml-ounit-devel
+sudo yum install syslinux-extlinux
+
+
+$ https://github.com/MuralidharB/libguestfs-1.44.1.git
+$ cd libguestfs-1.44.1
+$ export GO111MODULE=auto # Need this as the golang working directory is not a module, hence this env should be set to 'auto' instead of 'on'.
+$ sudo yum install automake
+$ aclocal
+$ ./autogen.sh # you may need to run it again if the first invocation fails
+$ make
+
+
+To verify that the build is successful and the new binary supports encrypted qcow2 images, follow these steps:
+$ dd if=/dev/urandom of=/tmp/base bs=1M count=1024
+$ qemu-img convert -p --object secret,id=sec0,data=backing --object secret,id=sec2,data=backing --image-opts driver=raw,file.filename=/tmp/base -O qcow2 -o encrypt.format=luks,encrypt.key-secret=sec2 /tmp/base.qcow2
+$ qemu-img create -f qcow2 --object secret,id=sec0,data=backing -b 'json:{ "encrypt.key-secret": "sec0", "driver": "qcow2", "file": { "driver": "file", "filename": "/tmp/base.qcow2" }}' -o encrypt.format=luks,encrypt.key-secret=sec0 /tmp/overlay.qcow2 1G
+
+$ ./run guestfish
+<fs> add driver=qcow2,file.filename=/tmp/overlay.qcow2,encrypt.key-secret=sec0 secobject:secret,id=sec0,data=backing
+<fs> run   
+
+The appliance should successfully boot and provide with a prompt.
+
+To build RPMs:
+==============
+cd libguestfs-1.44.1.encr/buildingrpms
+rpm -i libguestfs-1.44.1-1.fc33.src.rpm
+cd ~/rpmbuild/SPECS
+copy libguestfs-1.44.1.encr/buildingrpms/encr.patch into ~/rpmbuild/SOURCES
+Modify ~/rpmbuild/SPECS/libguestfs.spec to add the following line after Source0
+Patch0:        encr.patch
+rpmbuild -v -ba --nosignature ~/rpmbuild/SPECS/libguestfs.spec
+
+Your rpms will be available at ~/rpmbuild/RPMS/x86_64/.
+
+
+To update the patch file with new changes
+=========================================
+Modify the code, build the appliance and test the changes.
+Create patch file that includes the differences between the original sources and new sources as follows
+diff -urN libguestfs-1.44.1.orig/ libguestfs-1.44.1.mod/  > encr.patch
+Now use the new patch file to create new rpms.
