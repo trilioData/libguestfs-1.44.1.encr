@@ -22,6 +22,7 @@ COPYING.LIB for full license information.  The examples are under a
 very liberal license.
 
 ####################################################################
+
 To build libguestfs from this repository
 
 To build packages on CentOS 8
@@ -30,6 +31,8 @@ To build packages on CentOS 8
 Packages for CentOS 8
 =====================
 You may want to build the following packages if you are building on CentOS 8
+
+```
 sudo yum -y install glibc-devel gcc flex bison ncurses-devel libtirpc-devel pcre-devel
 sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 sudo yum install https://rpmfind.net/linux/centos/8.4.2105/BaseOS/x86_64/os/Packages/augeas-1.12.0-6.el8.x86_64.rpm
@@ -64,8 +67,9 @@ sudo yum-builddep libguestfs
 sudo yum install syslinux
 sudo dnf install ocaml-ounit-devel
 sudo yum install syslinux-extlinux
+```
 
-
+```
 $ https://github.com/MuralidharB/libguestfs-1.44.1.git
 $ cd libguestfs-1.44.1
 $ export GO111MODULE=auto # Need this as the golang working directory is not a module, hence this env should be set to 'auto' instead of 'on'.
@@ -73,18 +77,25 @@ $ sudo yum install automake
 $ aclocal
 $ ./autogen.sh # you may need to run it again if the first invocation fails
 $ make
-
+```
 
 
 To build RPMs:
 ==============
+
+```
 cd libguestfs-1.44.1.encr/buildingrpms
 rpm -i libguestfs-1.44.1-1.fc33.src.rpm
 cd ~/rpmbuild/SPECS
 copy libguestfs-1.44.1.encr/buildingrpms/encr.patch into ~/rpmbuild/SOURCES
+```
+
 Modify ~/rpmbuild/SPECS/libguestfs.spec to add the following line after Source0
+
+```
 Patch0:        encr.patch
 rpmbuild -v -ba --nosignature ~/rpmbuild/SPECS/libguestfs.spec
+```
 
 Your rpms will be available at ~/rpmbuild/RPMS/x86_64/.
 
