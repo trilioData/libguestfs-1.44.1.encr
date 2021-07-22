@@ -210,7 +210,7 @@ this function fails and the C<errno> is set to C<EINVAL>." };
 
   { defaults with
     name = "add_drive"; added = (0, 0, 3);
-    style = RErr, [String (PlainString, "filename")], [OBool "readonly"; OString "format"; OString "iface"; OString "name"; OString "label"; OString "protocol"; OStringList "server"; OString "username"; OString "secret"; OString "cachemode"; OString "discard"; OBool "copyonread"; OInt "blocksize"];
+    style = RErr, [String (PlainString, "filename")], [OBool "readonly"; OString "format"; OString "iface"; OString "name"; OString "label"; OString "protocol"; OStringList "server"; OString "username"; OString "secret"; OString "cachemode"; OString "discard"; OBool "copyonread"; OInt "blocksize"; OString "secobject"];
     once_had_no_optargs = true;
     blocking = false;
     fish_alias = ["add"];
@@ -478,6 +478,13 @@ size (L<https://en.wikipedia.org/wiki/Advanced_Format>).
 
 Only a subset of the backends support this parameter (currently only the
 libvirt and direct backends do).
+
+=item C<secobject>
+
+The object that describes the encryption key if the drive is encrypted.
+e.g. secobject:secret,id=sec0,data=backing where id is the name of the
+encryption object, data is the encryption key in plain text.
+
 
 =back" };
 
