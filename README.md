@@ -22,11 +22,17 @@ COPYING.LIB for full license information.  The examples are under a
 very liberal license.
 
 ####################################################################
+
 To build libguestfs from this repository
+
+To build packages on CentOS 8
+=============================
 
 Packages for CentOS 8
 =====================
 You may want to build the following packages if you are building on CentOS 8
+
+```
 sudo yum -y install glibc-devel gcc flex bison ncurses-devel libtirpc-devel pcre-devel
 sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 sudo yum install https://rpmfind.net/linux/centos/8.4.2105/BaseOS/x86_64/os/Packages/augeas-1.12.0-6.el8.x86_64.rpm
@@ -61,8 +67,9 @@ sudo yum-builddep libguestfs
 sudo yum install syslinux
 sudo dnf install ocaml-ounit-devel
 sudo yum install syslinux-extlinux
+```
 
-
+```
 $ https://github.com/MuralidharB/libguestfs-1.44.1.git
 $ cd libguestfs-1.44.1
 $ export GO111MODULE=auto # Need this as the golang working directory is not a module, hence this env should be set to 'auto' instead of 'on'.
@@ -70,31 +77,60 @@ $ sudo yum install automake
 $ aclocal
 $ ./autogen.sh # you may need to run it again if the first invocation fails
 $ make
+```
 
-
-To verify that the build is successful and the new binary supports encrypted qcow2 images, follow these steps:
-$ dd if=/dev/urandom of=/tmp/base bs=1M count=1024
-$ qemu-img convert -p --object secret,id=sec0,data=backing --object secret,id=sec2,data=backing --image-opts driver=raw,file.filename=/tmp/base -O qcow2 -o encrypt.format=luks,encrypt.key-secret=sec2 /tmp/base.qcow2
-$ qemu-img create -f qcow2 --object secret,id=sec0,data=backing -b 'json:{ "encrypt.key-secret": "sec0", "driver": "qcow2", "file": { "driver": "file", "filename": "/tmp/base.qcow2" }}' -o encrypt.format=luks,encrypt.key-secret=sec0 /tmp/overlay.qcow2 1G
-
-$ ./run guestfish
-<fs> add driver=qcow2,file.filename=/tmp/overlay.qcow2,encrypt.key-secret=sec0 secobject:secret,id=sec0,data=backing
-<fs> run   
-
-The appliance should successfully boot and provide with a prompt.
 
 To build RPMs:
 ==============
+
+```
 cd libguestfs-1.44.1.encr/buildingrpms
 rpm -i libguestfs-1.44.1-1.fc33.src.rpm
 cd ~/rpmbuild/SPECS
 copy libguestfs-1.44.1.encr/buildingrpms/encr.patch into ~/rpmbuild/SOURCES
+```
+
 Modify ~/rpmbuild/SPECS/libguestfs.spec to add the following line after Source0
+
+```
 Patch0:        encr.patch
 rpmbuild -v -ba --nosignature ~/rpmbuild/SPECS/libguestfs.spec
+```
 
 Your rpms will be available at ~/rpmbuild/RPMS/x86_64/.
 
+To Build Debian packages
+========================
+Choose the package that is appropriate for your Ubuntu releases.
+
+$ cat /etc/debian_version
+buster/sid
+
+
+All source packages can be found at: https://packages.debian.org/search?suite=default&section=all&arch=any&searchon=names&keywords=libguestfs.
+Choose the package liguestfs0.
+
+For example, for buster the right package is at: https://packages.debian.org/buster/libguestfs0
+
+Download the source tar file from the right side of the page:
+
+$ curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2.orig.tar.gz
+$ tar xzvf libguestfs_1.40.2.orig.tar.gz
+
+$ cd libguestfs-1.40.2
+
+Apply the patch file https://raw.githubusercontent.com/trilioData/libguestfs-1.44.1.encr/master/buildingrpms/encr.patch to the source.
+
+Download debian build files at  http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
+curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
+# you may need to install xz-utils for uncompressing *.xz files.
+$ sudo apt install xz-utils
+$ tar xvf libguestfs_1.40.2-2.debian.tar.xz
+
+Run the following command to build debian packages
+$ debuild -i -d -us -uc -b 2>&1 | tee /tmp/log
+
+After succesful build, the parent directory will contain debian packages
 
 To update the patch file with new changes
 =========================================
@@ -102,3 +138,16 @@ Modify the code, build the appliance and test the changes.
 Create patch file that includes the differences between the original sources and new sources as follows
 diff -urN libguestfs-1.44.1.orig/ libguestfs-1.44.1.mod/  > encr.patch
 Now use the new patch file to create new rpms.
+
+Verify build with encryption changes
+====================================
+To verify that the build is successful and the new binary supports encrypted qcow2 images, follow these steps:
+$ dd if=/dev/urandom of=/tmp/base bs=1M count=1024
+$ qemu-img convert -p --object secret,id=sec0,data=backing --object secret,id=sec2,data=backing --image-opts driver=raw,file.filename=/tmp/base -O qcow2 -o encrypt.format=luks,encrypt.key-secret=sec2 /tmp/base.qcow2
+$ qemu-img create -f qcow2 --object secret,id=sec0,data=backing -b 'json:{ "encrypt.key-secret": "sec0", "driver": "qcow2", "file": { "driver": "file", "filename": "/tmp/base.qcow2" }}' -o encrypt.format=luks,encrypt.key-secret=sec0 /tmp/overlay.qcow2 1G
+
+$ ./run guestfish
+<fs> add driver=qcow2,file.filename=/tmp/overlay.qcow2,encrypt.key-secret=sec0 secobject:secret,id=sec0,data=backing
+<fs> run
+
+The appliance should successfully boot and provide with a prompt.
