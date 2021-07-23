@@ -114,21 +114,28 @@ For example, for buster the right package is at: https://packages.debian.org/bus
 
 Download the source tar file from the right side of the page:
 
+```
 $ curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2.orig.tar.gz
 $ tar xzvf libguestfs_1.40.2.orig.tar.gz
 
 $ cd libguestfs-1.40.2
+```
 
 Apply the patch file https://raw.githubusercontent.com/trilioData/libguestfs-1.44.1.encr/master/buildingrpms/encr.patch to the source.
 
 Download debian build files at  http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
+
+```
 curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
 # you may need to install xz-utils for uncompressing *.xz files.
-$ sudo apt install xz-utils
+$ sudo apt install xz-utils devscripts debhelper dh-ocaml dh-python3 dh-python dh-ruby ruby1.9.1-full gem2deb dh-gir dh-make dh-sequence-gir dh-lua dh-php gperf genisoimage flex pcre-devel libpcre-devel libpcre3 libpcre3 libpcre3 libpcre3-devel libpcre3-dev libxml2-dev install libxml2-dev libfile-dev libmagic-dev jansson libjansson libjansson-dev hivex libcap-dev hivex-deve hivex-dev python-hivex libhivex-dev libhivex qemu-system ocaml-findlib-dev ocaml-findlib supermin ocaml-hivex ocaml-findlib libhivex-ocaml libhivex-ocaml-dev openjdk-8-jdk-headless
 $ tar xvf libguestfs_1.40.2-2.debian.tar.xz
+```
 
 Run the following command to build debian packages
+```
 $ debuild -i -d -us -uc -b 2>&1 | tee /tmp/log
+```
 
 After succesful build, the parent directory will contain debian packages
 
