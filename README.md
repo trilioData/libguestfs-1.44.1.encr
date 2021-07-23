@@ -130,6 +130,21 @@ curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2
 # you may need to install xz-utils for uncompressing *.xz files.
 $ sudo apt install xz-utils devscripts debhelper dh-ocaml dh-python3 dh-python dh-ruby ruby1.9.1-full gem2deb dh-gir dh-make dh-sequence-gir dh-lua dh-php gperf genisoimage flex pcre-devel libpcre-devel libpcre3 libpcre3 libpcre3 libpcre3-devel libpcre3-dev libxml2-dev install libxml2-dev libfile-dev libmagic-dev jansson libjansson libjansson-dev hivex libcap-dev hivex-deve hivex-dev python-hivex libhivex-dev libhivex qemu-system ocaml-findlib-dev ocaml-findlib supermin ocaml-hivex ocaml-findlib libhivex-ocaml libhivex-ocaml-dev openjdk-8-jdk-headless
 $ tar xvf libguestfs_1.40.2-2.debian.tar.xz
+
+curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.44.0.orig.tar.gz
+curl -O curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
+curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
+curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.44.0-2.debian.tar.xz
+curl -O http://ftp.us.debian.org/debian/pool/main/a/augeas/libaugeas0_1.12.0-2_amd64.deb
+curl -O http://ftp.us.debian.org/debian/pool/main/a/augeas/augeas-lenses_1.12.0-2_all.deb
+curl -O https://packages.debian.org/bullseye/amd64/libaugeas-dev/download
+curl -O http://http.us.debian.org/debian/pool/main/a/augeas/libaugeas-dev_1.12.0-2_amd64.deb
+
+sudo dpkg -i libaugeas0_1.12.0-2_amd64.deb
+sudo dpkg -i augeas-lenses_1.12.0-2_all.deb
+sudo dpkg -i libaugeas0_1.12.0-2_amd64.deb
+sudo dpkg -i libaugeas-dev_1.12.0-2_amd64.deb
+sudo dpkg -i libaugeas-dev_1.12.0-2_amd64.deb
 ```
 
 Run the following command to build debian packages
