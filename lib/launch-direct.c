@@ -307,9 +307,22 @@ static int
 add_drive (guestfs_h *g, struct backend_direct_data *data,
            struct qemuopts *qopts, size_t i, struct drive *drv)
 {
+  CLEANUP_FREE char *token = NULL;
   /* If there's an explicit 'iface', use it.  Otherwise default to
    * virtio-scsi.
    */
+
+  if (drv->secobject && strncmp(drv->secobject, "secret", strlen("secret")) == 0) {
+      /* get the first token */
+      start_list ("--object") {
+      token = strtok(safe_strdup(g, drv->secobject), ",");
+         /* walk through other tokens */
+         while ( token != NULL ) {
+           append_list(token);
+           token = strtok(NULL, ",");
+         }
+      } end_list ();
+  }
   if (drv->iface && STREQ (drv->iface, "virtio")) { /* virtio-blk */
     start_list ("-drive") {
       if (add_drive_standard_params (g, data, qopts, i, drv) == -1)
@@ -617,11 +630,6 @@ launch_direct (guestfs_h *g, void *datav, const char *arg)
       append_list ("rng=rng0");
     } end_list ();
   }
-  start_list ("--object") {
-    append_list ("secret");
-    append_list ("id=sec0");
-    append_list ("data=backing");
-  } end_list ();
 
   /* Create the virtio-scsi bus. */
   start_list ("-device") {
