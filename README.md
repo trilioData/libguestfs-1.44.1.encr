@@ -70,8 +70,8 @@ sudo yum install syslinux-extlinux
 ```
 
 ```
-$ https://github.com/MuralidharB/libguestfs-1.44.1.git
-$ cd libguestfs-1.44.1
+$ git clone https://github.com/trilioData/libguestfs-1.44.1.encr.git
+$ cd libguestfs-1.44.1.encr
 $ export GO111MODULE=auto # Need this as the golang working directory is not a module, hence this env should be set to 'auto' instead of 'on'.
 $ sudo yum install automake
 $ aclocal
@@ -86,18 +86,50 @@ To build RPMs:
 ```
 cd libguestfs-1.44.1.encr/buildingrpms
 rpm -i libguestfs-1.44.1-1.fc33.src.rpm
+cp ~/rpmbuild/SOURCES/libguestfs-1.44.1.tar.gz <tmpbuilddir>
+cd <tmpbuilddir>
+tar xzvf libguestfs-1.44.1.tar.gz
+mv libguestfs-1.44.1 libguestfs-1.44.1.org
+tar xzvf libguestfs-1.44.1.tar.gz
+mv libguestfs-1.44.1 libguestfs-1.44.1.mod
+
+# apply agregate changes from libguestfs-1.44.1.encr/buildingrpms/encr.patch and your changes to libguestfs-1.44.1.mod
+# for example libguestfs-1.44.1.encr/buildingrpms/encr.patch has following changes made
+diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
+diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
+diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
+diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
+diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
+diff -ruN libguestfs-1.44.1.orig/README.md libguestfs-1.44.1.mod/README.md
+
+# So copy those files to libguestfs-1.44.1.mod
+cp /tmp/libguestfs-1.44.1.encr/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
+cp /tmp/libguestfs-1.44.1.encr/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
+cp /tmp/libguestfs-1.44.1.encr/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
+cp /tmp/libguestfs-1.44.1.encr/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
+cp /tmp/libguestfs-1.44.1.encr/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
+cp /tmp/libguestfs-1.44.1.encr/README.md libguestfs-1.44.1.mod/
+
+# calculate new disk
+cd <tmpbuilddir>
+diff -ruN libguestfs-1.44.1.orig/ libguestfs-1.44.1.mod/ > encr.patch
+
+copy encr.patch into ~/rpmbuild/SOURCES
 cd ~/rpmbuild/SPECS
-copy libguestfs-1.44.1.encr/buildingrpms/encr.patch into ~/rpmbuild/SOURCES
 ```
 
 Modify ~/rpmbuild/SPECS/libguestfs.spec to add the following line after Source0
 
 ```
 Patch0:        encr.patch
+
 rpmbuild -v -ba --nosignature ~/rpmbuild/SPECS/libguestfs.spec
 ```
 
 Your rpms will be available at ~/rpmbuild/RPMS/x86_64/.
+cp -r ~/rpmbuild/RPMS/ libguestfs-1.44.1.encr/buildingrpms
+
+# push new encr.diff and new rpms to git repo and announce the new rpms to slack channel at libguestfs-qemu
 
 To Build Debian packages
 ========================
