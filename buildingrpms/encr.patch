@@ -1,6 +1,6 @@
-diff -urN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
+diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
 --- libguestfs-1.44.1.orig/generator/actions_core.ml	2021-04-03 06:24:38.048065697 -0400
-+++ libguestfs-1.44.1.mod/generator/actions_core.ml	2021-07-18 19:40:04.092726952 -0400
++++ libguestfs-1.44.1.mod/generator/actions_core.ml	2021-08-20 07:22:46.772231855 -0400
 @@ -210,7 +210,7 @@
  
    { defaults with
@@ -17,16 +17,16 @@ diff -urN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod
 +=item C<secobject>
 +
 +The object that describes the encryption key if the drive is encrypted.
-+e.g. secobject:secret,id=sec0,data=backing where id is the name of the 
++e.g. secobject:secret,id=sec0,data=backing where id is the name of the
 +encryption object, data is the encryption key in plain text.
 +
 +
  =back" };
  
    { defaults with
-diff -urN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
+diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
 --- libguestfs-1.44.1.orig/lib/drives.c	2020-03-06 14:31:08.168077968 -0500
-+++ libguestfs-1.44.1.mod/lib/drives.c	2021-07-18 22:10:38.747649103 -0400
++++ libguestfs-1.44.1.mod/lib/drives.c	2021-08-20 07:23:12.449650181 -0400
 @@ -59,6 +59,7 @@
    enum discard discard;
    bool copyonread;
@@ -132,9 +132,9 @@ diff -urN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
        drv = create_drive_file (g, &data);
      }
    }
-diff -urN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
+diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
 --- libguestfs-1.44.1.orig/lib/guestfs-internal.h	2021-04-03 06:20:10.305684996 -0400
-+++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2021-07-18 22:10:38.730649422 -0400
++++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2021-08-20 07:23:38.880051451 -0400
 @@ -272,6 +272,7 @@
    enum discard discard;
    bool copyonread;
@@ -143,9 +143,9 @@ diff -urN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/li
  };
  
  /* Extra hv parameters (from guestfs_config). */
-diff -urN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
+diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
 --- libguestfs-1.44.1.orig/lib/launch-direct.c	2020-03-06 14:31:08.171077925 -0500
-+++ libguestfs-1.44.1.mod/lib/launch-direct.c	2021-07-18 22:10:38.712649760 -0400
++++ libguestfs-1.44.1.mod/lib/launch-direct.c	2021-08-20 07:24:04.201477842 -0400
 @@ -202,10 +202,21 @@
  {
    if (!drv->overlay) {
@@ -169,21 +169,32 @@ diff -urN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/l
  
      if (drv->readonly)
        append_list ("snapshot=on");
-@@ -606,6 +617,11 @@
-       append_list ("rng=rng0");
-     } end_list ();
-   }
-+  start_list ("--object") {
-+    append_list ("secret");
-+    append_list ("id=sec0");
-+    append_list ("data=backing");
-+  } end_list ();
- 
-   /* Create the virtio-scsi bus. */
-   start_list ("-device") {
-diff -urN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
+@@ -296,9 +307,22 @@
+ add_drive (guestfs_h *g, struct backend_direct_data *data,
+            struct qemuopts *qopts, size_t i, struct drive *drv)
+ {
++  CLEANUP_FREE char *token = NULL;
+   /* If there's an explicit 'iface', use it.  Otherwise default to
+    * virtio-scsi.
+    */
++
++  if (drv->secobject && strncmp(drv->secobject, "secret", strlen("secret")) == 0) {
++      /* get the first token */
++      start_list ("--object") {
++      token = strtok(safe_strdup(g, drv->secobject), ",");
++         /* walk through other tokens */
++         while ( token != NULL ) {
++           append_list(token);
++           token = strtok(NULL, ",");
++         }
++      } end_list ();
++  }
+   if (drv->iface && STREQ (drv->iface, "virtio")) { /* virtio-blk */
+     start_list ("-drive") {
+       if (add_drive_standard_params (g, data, qopts, i, drv) == -1)
+diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
 --- libguestfs-1.44.1.orig/lib/qemu.c	2021-04-03 06:20:33.492458904 -0400
-+++ libguestfs-1.44.1.mod/lib/qemu.c	2021-07-18 22:10:38.688650210 -0400
++++ libguestfs-1.44.1.mod/lib/qemu.c	2021-08-20 07:24:22.351066698 -0400
 @@ -817,13 +817,16 @@
       * As a side-effect this deals with paths that contain ':' since
       * qemu will not process the ':' if the path begins with '/'.
@@ -208,36 +219,175 @@ diff -urN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
  
    case drive_protocol_ftp:
      return make_uri (g, "ftp", src->username, src->secret,
-diff -urN libguestfs-1.44.1.orig/README libguestfs-1.44.1.mod/README
---- libguestfs-1.44.1.orig/README	2020-03-06 14:31:08.077079274 -0500
-+++ libguestfs-1.44.1.mod/README	2021-07-18 22:10:38.666650623 -0400
-@@ -20,3 +20,36 @@
- distributed under the GPLv2+.  Please see the files COPYING and
- COPYING.LIB for full license information.  The examples are under a
- very liberal license.
+diff -ruN libguestfs-1.44.1.orig/README.md libguestfs-1.44.1.mod/README.md
+--- libguestfs-1.44.1.orig/README.md	1969-12-31 19:00:00.000000000 -0500
++++ libguestfs-1.44.1.mod/README.md	2021-08-20 07:24:48.979463484 -0400
+@@ -0,0 +1,175 @@
++Libguestfs is tools and a library for accessing and modifying guest
++disk images.  For more information see the home page:
++
++  http://libguestfs.org/
++
++For discussion, development, patches, etc. please use the mailing
++list:
++
++  http://www.redhat.com/mailman/listinfo/libguestfs
++
++To find out how to build libguestfs from source, read:
++
++  docs/guestfs-building.pod
++  http://libguestfs.org/guestfs-building.1.html
++  man docs/guestfs-building.1
++
++Copyright (C) 2009-2020 Red Hat Inc.
++
++The library is distributed under the LGPLv2+.  The programs are
++distributed under the GPLv2+.  Please see the files COPYING and
++COPYING.LIB for full license information.  The examples are under a
++very liberal license.
 +
 +####################################################################
++
 +To build libguestfs from this repository
 +
-+$ https://github.com/MuralidharB/libguestfs-1.44.1.git
-+$ cd libguestfs-1.44.1
++To build packages on CentOS 8
++=============================
++
++Packages for CentOS 8
++=====================
++You may want to build the following packages if you are building on CentOS 8
++
++```
++sudo yum -y install glibc-devel gcc flex bison ncurses-devel libtirpc-devel pcre-devel
++sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
++sudo yum install https://rpmfind.net/linux/centos/8.4.2105/BaseOS/x86_64/os/Packages/augeas-1.12.0-6.el8.x86_64.rpm
++sudo yum install https://rpmfind.net/linux/centos/8.4.2105/PowerTools/x86_64/os/Packages/augeas-devel-1.12.0-6.el8.x86_64.rpm
++sudo yum install http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/file-devel-5.33-16.el8_3.1.x86_64.rpm
++sudo dnf install jansson-devel
++sudo dnf install jansson
++sudo dnf install fuse
++sudo dnf install fuse-level
++dnf --enablerepo=powertools install gperf
++sudo yum install libcap-devel hivex hivex-devel supermin
++ sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
++sudo yum install patch make
++
++sudo dnf --enablerepo=powertools install libconfig-devel
++opam init
++sudo dnf --enablerepo=powertools install ocaml
++opam install ocamlfind
++opam install ocamlbuild
++sudo yum install http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/ocaml-hivex-1.3.18-20.module_el8.4.0+547+a85d02ba.x86_64.rpm
++sudo yum install http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/ocaml-hivex-devel-1.3.18-20.module_el8.4.0+547+a85d02ba.x86_64.rpm
++sudo yum install autoconf automake libtool gettext-devel
++sudo yum install yum-utils
++sudo dnf --enablerepo=powertools install ocaml-findlib-devel
++sudo dnf --enablerepo=powertools install glibc-static lua-devel rpcgen ocaml-ocamldoc po4a perl-Test-Pod perl-Test-Pod-Coverage
++sudo dnf --enablerepo=powertools install ocaml-camlp4
++sudo yum install https://cbs.centos.org/kojifiles/packages/ocaml-fileutils/0.5.2/12.el8/x86_64/ocaml-fileutils-0.5.2-12.el8.x86_64.rpm
++sudo yum install https://cbs.centos.org/kojifiles/packages/ocaml-gettext/0.3.7/7.el8/x86_64/ocaml-gettext-devel-0.3.7-7.el8.x86_64.rpm
++sudo yum install https://cbs.centos.org/kojifiles/packages/ocaml-fileutils/0.5.2/12.el8/x86_64/ocaml-fileutils-devel-0.5.2-12.el8.x86_64.rpm
++sudo yum install https://cbs.centos.org/kojifiles/packages/ocaml-fileutils/0.5.2/12.el8/x86_64/ocaml-fileutils-0.5.2-12.el8.x86_64.rpm
++sudo yum-builddep libguestfs
++sudo yum install syslinux
++sudo dnf install ocaml-ounit-devel
++sudo yum install syslinux-extlinux
++```
++
++```
++$ git clone https://github.com/trilioData/libguestfs-1.44.1.encr.git
++$ cd libguestfs-1.44.1.encr
 +$ export GO111MODULE=auto # Need this as the golang working directory is not a module, hence this env should be set to 'auto' instead of 'on'.
 +$ sudo yum install automake
 +$ aclocal
 +$ ./autogen.sh # you may need to run it again if the first invocation fails
-+# autogen.sh may overwrite some of our modifications because these are autogenerated files
-+# We have yet to figure out how to make changes to original files. Please checkout the 
-+# files again from the repo. These files are:
-+   1. include/guestfs.h
-+   2. fish/run-2.c
-+   3. lib/actions-2.c
-+   4. golang/src/libguestfs.org/guestfs/guestfs.go
-+   5. python/guestfs.py
-+   6. python/actions-2.c
-+
 +$ make
++```
 +
 +
++To build RPMs:
++==============
++
++```
++cd libguestfs-1.44.1.encr/buildingrpms
++rpm -i libguestfs-1.44.1-1.fc33.src.rpm
++cd ~/rpmbuild/SPECS
++copy libguestfs-1.44.1.encr/buildingrpms/encr.patch into ~/rpmbuild/SOURCES
++```
++
++Modify ~/rpmbuild/SPECS/libguestfs.spec to add the following line after Source0
++
++```
++Patch0:        encr.patch
++rpmbuild -v -ba --nosignature ~/rpmbuild/SPECS/libguestfs.spec
++```
++
++Your rpms will be available at ~/rpmbuild/RPMS/x86_64/.
++
++To Build Debian packages
++========================
++Choose the package that is appropriate for your Ubuntu releases.
++
++$ cat /etc/debian_version
++buster/sid
++
++
++All source packages can be found at: https://packages.debian.org/search?suite=default&section=all&arch=any&searchon=names&keywords=libguestfs.
++Choose the package liguestfs0.
++
++For example, for buster the right package is at: https://packages.debian.org/buster/libguestfs0
++
++Download the source tar file from the right side of the page:
++
++```
++$ curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2.orig.tar.gz
++$ tar xzvf libguestfs_1.40.2.orig.tar.gz
++
++$ cd libguestfs-1.40.2
++```
++
++Apply the patch file https://raw.githubusercontent.com/trilioData/libguestfs-1.44.1.encr/master/buildingrpms/encr.patch to the source.
++
++Download debian build files at  http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
++
++```
++curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
++# you may need to install xz-utils for uncompressing *.xz files.
++$ sudo apt install xz-utils devscripts debhelper dh-ocaml dh-python3 dh-python dh-ruby ruby1.9.1-full gem2deb dh-gir dh-make dh-sequence-gir dh-lua dh-php gperf genisoimage flex pcre-devel libpcre-devel libpcre3 libpcre3 libpcre3 libpcre3-devel libpcre3-dev libxml2-dev install libxml2-dev libfile-dev libmagic-dev jansson libjansson libjansson-dev hivex libcap-dev hivex-deve hivex-dev python-hivex libhivex-dev libhivex qemu-system ocaml-findlib-dev ocaml-findlib supermin ocaml-hivex ocaml-findlib libhivex-ocaml libhivex-ocaml-dev openjdk-8-jdk-headless
++$ tar xvf libguestfs_1.40.2-2.debian.tar.xz
++
++curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.44.0.orig.tar.gz
++curl -O curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
++curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.40.2-2.debian.tar.xz
++curl -O http://deb.debian.org/debian/pool/main/libg/libguestfs/libguestfs_1.44.0-2.debian.tar.xz
++curl -O http://ftp.us.debian.org/debian/pool/main/a/augeas/libaugeas0_1.12.0-2_amd64.deb
++curl -O http://ftp.us.debian.org/debian/pool/main/a/augeas/augeas-lenses_1.12.0-2_all.deb
++curl -O https://packages.debian.org/bullseye/amd64/libaugeas-dev/download
++curl -O http://http.us.debian.org/debian/pool/main/a/augeas/libaugeas-dev_1.12.0-2_amd64.deb
++
++sudo dpkg -i libaugeas0_1.12.0-2_amd64.deb
++sudo dpkg -i augeas-lenses_1.12.0-2_all.deb
++sudo dpkg -i libaugeas0_1.12.0-2_amd64.deb
++sudo dpkg -i libaugeas-dev_1.12.0-2_amd64.deb
++sudo dpkg -i libaugeas-dev_1.12.0-2_amd64.deb
++```
++
++Run the following command to build debian packages
++```
++$ debuild -i -d -us -uc -b 2>&1 | tee /tmp/log
++```
++
++After succesful build, the parent directory will contain debian packages
++
++To update the patch file with new changes
++=========================================
++Modify the code, build the appliance and test the changes.
++Create patch file that includes the differences between the original sources and new sources as follows
++diff -urN libguestfs-1.44.1.orig/ libguestfs-1.44.1.mod/  > encr.patch
++Now use the new patch file to create new rpms.
++
++Verify build with encryption changes
++====================================
 +To verify that the build is successful and the new binary supports encrypted qcow2 images, follow these steps:
 +$ dd if=/dev/urandom of=/tmp/base bs=1M count=1024
 +$ qemu-img convert -p --object secret,id=sec0,data=backing --object secret,id=sec2,data=backing --image-opts driver=raw,file.filename=/tmp/base -O qcow2 -o encrypt.format=luks,encrypt.key-secret=sec2 /tmp/base.qcow2
@@ -245,6 +395,6 @@ diff -urN libguestfs-1.44.1.orig/README libguestfs-1.44.1.mod/README
 +
 +$ ./run guestfish
 +<fs> add driver=qcow2,file.filename=/tmp/overlay.qcow2,encrypt.key-secret=sec0 secobject:secret,id=sec0,data=backing
-+<fs> run   
++<fs> run
 +
-+The appliance should successfully boot and provide with prompt
++The appliance should successfully boot and provide with a prompt.
