@@ -94,6 +94,8 @@ tar xzvf libguestfs-1.44.1.tar.gz
 mv libguestfs-1.44.1 libguestfs-1.44.1.mod
 
 # apply agregate changes from libguestfs-1.44.1.encr/buildingrpms/encr.patch and your changes to libguestfs-1.44.1.mod
+patch -s -p0 < encr.patch
+
 # for example libguestfs-1.44.1.encr/buildingrpms/encr.patch has following changes made
 diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
 diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
