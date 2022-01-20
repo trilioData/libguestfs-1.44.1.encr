@@ -1,4 +1,4 @@
-diff -urN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
+diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
 --- libguestfs-1.44.1.orig/generator/actions_core.ml	2021-04-03 06:24:38.048065697 -0400
 +++ libguestfs-1.44.1.mod/generator/actions_core.ml	2021-08-20 07:22:46.772231855 -0400
 @@ -210,7 +210,7 @@
@@ -24,9 +24,9 @@ diff -urN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod
  =back" };
  
    { defaults with
-diff -urN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/copy-in-out.c
+diff -ruN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/copy-in-out.c
 --- libguestfs-1.44.1.orig/lib/copy-in-out.c	2020-03-06 14:31:08.167077983 -0500
-+++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2022-01-18 18:12:50.269933380 -0500
++++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2022-01-19 23:47:01.895146890 -0500
 @@ -82,6 +82,8 @@
    snprintf (fdbuf, sizeof fdbuf, "/dev/fd/%d", fd);
  
@@ -36,7 +36,16 @@ diff -urN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/cop
  
    if (close (fd) == -1) {
      perrorf (g, "close (tar subprocess)");
-diff -urN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
+@@ -211,6 +213,8 @@
+     snprintf (fdbuf, sizeof fdbuf, "/dev/fd/%d", fd);
+ 
+     r = guestfs_tar_out (g, remotepath, fdbuf);
++    if (r == -1)
++      return -1;
+ 
+     if (close (fd) == -1) {
+       perrorf (g, "close (tar-output subprocess)");
+diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
 --- libguestfs-1.44.1.orig/lib/drives.c	2020-03-06 14:31:08.168077968 -0500
 +++ libguestfs-1.44.1.mod/lib/drives.c	2021-08-20 07:23:12.449650181 -0400
 @@ -59,6 +59,7 @@
@@ -144,7 +153,7 @@ diff -urN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
        drv = create_drive_file (g, &data);
      }
    }
-diff -urN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
+diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
 --- libguestfs-1.44.1.orig/lib/guestfs-internal.h	2021-04-03 06:20:10.305684996 -0400
 +++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2021-08-20 07:23:38.880051451 -0400
 @@ -272,6 +272,7 @@
@@ -155,7 +164,7 @@ diff -urN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/li
  };
  
  /* Extra hv parameters (from guestfs_config). */
-diff -urN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
+diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
 --- libguestfs-1.44.1.orig/lib/launch-direct.c	2020-03-06 14:31:08.171077925 -0500
 +++ libguestfs-1.44.1.mod/lib/launch-direct.c	2021-08-20 07:24:04.201477842 -0400
 @@ -202,10 +202,21 @@
@@ -204,7 +213,7 @@ diff -urN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/l
    if (drv->iface && STREQ (drv->iface, "virtio")) { /* virtio-blk */
      start_list ("-drive") {
        if (add_drive_standard_params (g, data, qopts, i, drv) == -1)
-diff -urN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
+diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
 --- libguestfs-1.44.1.orig/lib/qemu.c	2021-04-03 06:20:33.492458904 -0400
 +++ libguestfs-1.44.1.mod/lib/qemu.c	2021-08-20 07:24:22.351066698 -0400
 @@ -817,13 +817,16 @@
@@ -231,7 +240,7 @@ diff -urN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
  
    case drive_protocol_ftp:
      return make_uri (g, "ftp", src->username, src->secret,
-diff -urN libguestfs-1.44.1.orig/README.md libguestfs-1.44.1.mod/README.md
+diff -ruN libguestfs-1.44.1.orig/README.md libguestfs-1.44.1.mod/README.md
 --- libguestfs-1.44.1.orig/README.md	1969-12-31 19:00:00.000000000 -0500
 +++ libguestfs-1.44.1.mod/README.md	2021-08-20 07:24:48.979463484 -0400
 @@ -0,0 +1,175 @@
