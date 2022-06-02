@@ -1,6 +1,85 @@
+diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsync.c
+--- libguestfs-1.44.1.orig/daemon/rsync.c	2020-03-06 14:31:08.121078643 -0500
++++ libguestfs-1.44.1.mod/daemon/rsync.c	2022-06-02 11:29:51.760936438 -0400
+@@ -39,7 +39,7 @@
+ static int
+ rsync (const char *src, const char *src_orig,
+        const char *dest, const char *dest_orig,
+-       int archive, int deletedest)
++       int archive, int deletedest, int nowholefile)
+ {
+   const char *argv[MAX_ARGS];
+   size_t i = 0;
+@@ -54,6 +54,9 @@
+   if (deletedest)
+     ADD_ARG (argv, i, "--delete");
+ 
++  if (nowholefile)
++    ADD_ARG (argv, i, "--no-whole-file");
++
+   ADD_ARG (argv, i, src);
+   ADD_ARG (argv, i, dest);
+   ADD_ARG (argv, i, NULL);
+@@ -70,7 +73,7 @@
+ /* Takes optional arguments, consult optargs_bitmask. */
+ int
+ do_rsync (const char *src_orig, const char *dest_orig,
+-          int archive, int deletedest)
++          int archive, int deletedest, int nowholefile)
+ {
+   CLEANUP_FREE char *src = NULL, *dest = NULL;
+ 
+@@ -85,14 +88,16 @@
+     archive = 0;
+   if (!(optargs_bitmask & GUESTFS_RSYNC_DELETEDEST_BITMASK))
+     deletedest = 0;
++  if (!(optargs_bitmask & GUESTFS_RSYNC_NOWHOLEFILE_BITMASK))
++    nowholefile = 0;
+ 
+-  return rsync (src, src_orig, dest, dest_orig, archive, deletedest);
++  return rsync (src, src_orig, dest, dest_orig, archive, deletedest, nowholefile);
+ }
+ 
+ /* Takes optional arguments, consult optargs_bitmask. */
+ int
+ do_rsync_in (const char *remote, const char *dest_orig,
+-             int archive, int deletedest)
++             int archive, int deletedest, int nowholefile)
+ {
+   CLEANUP_FREE char *dest = NULL;
+ 
+@@ -106,14 +111,16 @@
+     archive = 0;
+   if (!(optargs_bitmask & GUESTFS_RSYNC_IN_DELETEDEST_BITMASK))
+     deletedest = 0;
++  if (!(optargs_bitmask & GUESTFS_RSYNC_IN_NOWHOLEFILE_BITMASK))
++    nowholefile = 0;
+ 
+-  return rsync (remote, remote, dest, dest_orig, archive, deletedest);
++  return rsync (remote, remote, dest, dest_orig, archive, deletedest, nowholefile);
+ }
+ 
+ /* Takes optional arguments, consult optargs_bitmask. */
+ int
+ do_rsync_out (const char *src_orig, const char *remote,
+-              int archive, int deletedest)
++              int archive, int deletedest, int nowholefile)
+ {
+   CLEANUP_FREE char *src = NULL;
+ 
+@@ -127,6 +134,8 @@
+     archive = 0;
+   if (!(optargs_bitmask & GUESTFS_RSYNC_OUT_DELETEDEST_BITMASK))
+     deletedest = 0;
++  if (!(optargs_bitmask & GUESTFS_RSYNC_OUT_NOWHOLEFILE_BITMASK))
++    nowholefile = 0;
+ 
+-  return rsync (src, src_orig, remote, remote, archive, deletedest);
++  return rsync (src, src_orig, remote, remote, archive, deletedest, nowholefile);
+ }
 diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
 --- libguestfs-1.44.1.orig/generator/actions_core.ml	2021-04-03 06:24:38.048065697 -0400
-+++ libguestfs-1.44.1.mod/generator/actions_core.ml	2021-08-20 07:22:46.772231855 -0400
++++ libguestfs-1.44.1.mod/generator/actions_core.ml	2022-06-02 11:34:48.626831720 -0400
 @@ -210,7 +210,7 @@
  
    { defaults with
@@ -24,9 +103,44 @@ diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod
  =back" };
  
    { defaults with
+@@ -7530,7 +7537,7 @@
+ 
+   { defaults with
+     name = "rsync"; added = (1, 19, 29);
+-    style = RErr, [String (Pathname, "src"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"];
++    style = RErr, [String (Pathname, "src"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"; OBool "nowholefile"];
+     optional = Some "rsync";
+     test_excuse = "tests are in tests/rsync";
+     shortdesc = "synchronize the contents of two directories";
+@@ -7556,11 +7563,15 @@
+ 
+ Delete files at the destination that do not exist at the source.
+ 
++=item C<nowholefile>
++
++Copies the delta changes from source file to destination file
++
+ =back" };
+ 
+   { defaults with
+     name = "rsync_in"; added = (1, 19, 29);
+-    style = RErr, [String (PlainString, "remote"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"];
++    style = RErr, [String (PlainString, "remote"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"; OBool "nowholefile"];
+     optional = Some "rsync";
+     test_excuse = "tests are in tests/rsync";
+     shortdesc = "synchronize host or remote filesystem with filesystem";
+@@ -7585,7 +7596,7 @@
+ 
+   { defaults with
+     name = "rsync_out"; added = (1, 19, 29);
+-    style = RErr, [String (Pathname, "src"); String (PlainString, "remote")], [OBool "archive"; OBool "deletedest"];
++    style = RErr, [String (Pathname, "src"); String (PlainString, "remote")], [OBool "archive"; OBool "deletedest"; OBool "nowholefile"];
+     optional = Some "rsync";
+     test_excuse = "tests are in tests/rsync";
+     shortdesc = "synchronize filesystem with host or remote filesystem";
 diff -ruN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/copy-in-out.c
 --- libguestfs-1.44.1.orig/lib/copy-in-out.c	2020-03-06 14:31:08.167077983 -0500
-+++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2022-01-19 23:47:01.895146890 -0500
++++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2022-06-02 11:34:48.626831720 -0400
 @@ -82,6 +82,8 @@
    snprintf (fdbuf, sizeof fdbuf, "/dev/fd/%d", fd);
  
@@ -47,7 +161,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/cop
        perrorf (g, "close (tar-output subprocess)");
 diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
 --- libguestfs-1.44.1.orig/lib/drives.c	2020-03-06 14:31:08.168077968 -0500
-+++ libguestfs-1.44.1.mod/lib/drives.c	2021-08-20 07:23:12.449650181 -0400
++++ libguestfs-1.44.1.mod/lib/drives.c	2022-06-02 11:34:48.627831699 -0400
 @@ -59,6 +59,7 @@
    enum discard discard;
    bool copyonread;
@@ -155,7 +269,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
    }
 diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
 --- libguestfs-1.44.1.orig/lib/guestfs-internal.h	2021-04-03 06:20:10.305684996 -0400
-+++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2021-08-20 07:23:38.880051451 -0400
++++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2022-06-02 11:34:48.627831699 -0400
 @@ -272,6 +272,7 @@
    enum discard discard;
    bool copyonread;
@@ -166,7 +280,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/li
  /* Extra hv parameters (from guestfs_config). */
 diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
 --- libguestfs-1.44.1.orig/lib/launch-direct.c	2020-03-06 14:31:08.171077925 -0500
-+++ libguestfs-1.44.1.mod/lib/launch-direct.c	2021-08-20 07:24:04.201477842 -0400
++++ libguestfs-1.44.1.mod/lib/launch-direct.c	2022-06-02 11:34:48.627831699 -0400
 @@ -202,10 +202,21 @@
  {
    if (!drv->overlay) {
@@ -215,7 +329,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/l
        if (add_drive_standard_params (g, data, qopts, i, drv) == -1)
 diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
 --- libguestfs-1.44.1.orig/lib/qemu.c	2021-04-03 06:20:33.492458904 -0400
-+++ libguestfs-1.44.1.mod/lib/qemu.c	2021-08-20 07:24:22.351066698 -0400
++++ libguestfs-1.44.1.mod/lib/qemu.c	2022-06-02 11:34:48.627831699 -0400
 @@ -817,13 +817,16 @@
       * As a side-effect this deals with paths that contain ':' since
       * qemu will not process the ':' if the path begins with '/'.
@@ -242,7 +356,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
      return make_uri (g, "ftp", src->username, src->secret,
 diff -ruN libguestfs-1.44.1.orig/README.md libguestfs-1.44.1.mod/README.md
 --- libguestfs-1.44.1.orig/README.md	1969-12-31 19:00:00.000000000 -0500
-+++ libguestfs-1.44.1.mod/README.md	2021-08-20 07:24:48.979463484 -0400
++++ libguestfs-1.44.1.mod/README.md	2022-06-02 11:34:48.627831699 -0400
 @@ -0,0 +1,175 @@
 +Libguestfs is tools and a library for accessing and modifying guest
 +disk images.  For more information see the home page:
