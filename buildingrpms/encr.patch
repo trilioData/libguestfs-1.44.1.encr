@@ -1,6 +1,6 @@
 diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsync.c
 --- libguestfs-1.44.1.orig/daemon/rsync.c	2020-03-06 14:31:08.121078643 -0500
-+++ libguestfs-1.44.1.mod/daemon/rsync.c	2022-07-01 08:33:42.515360533 -0400
++++ libguestfs-1.44.1.mod/daemon/rsync.c	2022-07-03 22:31:20.875521183 -0400
 @@ -39,7 +39,7 @@
  static int
  rsync (const char *src, const char *src_orig,
@@ -10,17 +10,19 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  {
    const char *argv[MAX_ARGS];
    size_t i = 0;
-@@ -54,6 +54,9 @@
+@@ -54,6 +54,11 @@
    if (deletedest)
      ADD_ARG (argv, i, "--delete");
  
-+  if (nowholefile)
-+    ADD_ARG (argv, i, "-a -v --stats --inplace --no-whole-file");
++  if (nowholefile) {
++    ADD_ARG (argv, i, "--no-whole-file");
++    ADD_ARG (argv, i, "--inplace");
++  }
 +
    ADD_ARG (argv, i, src);
    ADD_ARG (argv, i, dest);
    ADD_ARG (argv, i, NULL);
-@@ -70,7 +73,7 @@
+@@ -70,7 +75,7 @@
  /* Takes optional arguments, consult optargs_bitmask. */
  int
  do_rsync (const char *src_orig, const char *dest_orig,
@@ -29,7 +31,7 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  {
    CLEANUP_FREE char *src = NULL, *dest = NULL;
  
-@@ -85,14 +88,16 @@
+@@ -85,14 +90,16 @@
      archive = 0;
    if (!(optargs_bitmask & GUESTFS_RSYNC_DELETEDEST_BITMASK))
      deletedest = 0;
@@ -48,7 +50,7 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  {
    CLEANUP_FREE char *dest = NULL;
  
-@@ -106,14 +111,16 @@
+@@ -106,14 +113,16 @@
      archive = 0;
    if (!(optargs_bitmask & GUESTFS_RSYNC_IN_DELETEDEST_BITMASK))
      deletedest = 0;
@@ -67,7 +69,7 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  {
    CLEANUP_FREE char *src = NULL;
  
-@@ -127,6 +134,8 @@
+@@ -127,6 +136,8 @@
      archive = 0;
    if (!(optargs_bitmask & GUESTFS_RSYNC_OUT_DELETEDEST_BITMASK))
      deletedest = 0;
