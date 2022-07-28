@@ -203,8 +203,9 @@ $ dd if=/dev/urandom of=/tmp/base bs=1M count=1024
 $ qemu-img convert -p --object secret,id=sec0,data=backing --object secret,id=sec2,data=backing --image-opts driver=raw,file.filename=/tmp/base -O qcow2 -o encrypt.format=luks,encrypt.key-secret=sec2 /tmp/base.qcow2
 $ qemu-img create -f qcow2 --object secret,id=sec0,data=backing -b 'json:{ "encrypt.key-secret": "sec0", "driver": "qcow2", "file": { "driver": "file", "filename": "/tmp/base.qcow2" }}' -o encrypt.format=luks,encrypt.key-secret=sec0 /tmp/overlay.qcow2 1G
 ```
+```
 $ ./run guestfish
 <fs> add driver=qcow2,file.filename=/tmp/overlay.qcow2,encrypt.key-secret=sec0 secobject:secret,id=sec0,data=backing
 <fs> run
-
+```
 The appliance should successfully boot and provide with a prompt.
