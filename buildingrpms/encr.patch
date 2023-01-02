@@ -1,6 +1,6 @@
 diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsync.c
 --- libguestfs-1.44.1.orig/daemon/rsync.c	2020-03-06 14:31:08.121078643 -0500
-+++ libguestfs-1.44.1.mod/daemon/rsync.c	2022-07-30 02:15:15.045720410 -0400
++++ libguestfs-1.44.1.mod/daemon/rsync.c	2023-01-02 12:38:47.696422611 -0500
 @@ -39,7 +39,7 @@
  static int
  rsync (const char *src, const char *src_orig,
@@ -10,7 +10,7 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  {
    const char *argv[MAX_ARGS];
    size_t i = 0;
-@@ -54,6 +54,11 @@
+@@ -54,6 +54,12 @@
    if (deletedest)
      ADD_ARG (argv, i, "--delete");
  
@@ -18,11 +18,12 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
 +    ADD_ARG (argv, i, "--no-whole-file");
 +    ADD_ARG (argv, i, "--inplace");
 +  }
++  ADD_ARG (argv, i, "--no-specials");
 +
    ADD_ARG (argv, i, src);
    ADD_ARG (argv, i, dest);
    ADD_ARG (argv, i, NULL);
-@@ -70,7 +75,7 @@
+@@ -70,7 +76,7 @@
  /* Takes optional arguments, consult optargs_bitmask. */
  int
  do_rsync (const char *src_orig, const char *dest_orig,
@@ -31,7 +32,7 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  {
    CLEANUP_FREE char *src = NULL, *dest = NULL;
  
-@@ -85,14 +90,16 @@
+@@ -85,14 +91,16 @@
      archive = 0;
    if (!(optargs_bitmask & GUESTFS_RSYNC_DELETEDEST_BITMASK))
      deletedest = 0;
@@ -50,7 +51,7 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  {
    CLEANUP_FREE char *dest = NULL;
  
-@@ -106,14 +113,16 @@
+@@ -106,14 +114,16 @@
      archive = 0;
    if (!(optargs_bitmask & GUESTFS_RSYNC_IN_DELETEDEST_BITMASK))
      deletedest = 0;
@@ -69,7 +70,7 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  {
    CLEANUP_FREE char *src = NULL;
  
-@@ -127,6 +136,8 @@
+@@ -127,6 +137,8 @@
      archive = 0;
    if (!(optargs_bitmask & GUESTFS_RSYNC_OUT_DELETEDEST_BITMASK))
      deletedest = 0;
@@ -81,7 +82,7 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  }
 diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
 --- libguestfs-1.44.1.orig/generator/actions_core.ml	2021-04-03 06:24:38.048065697 -0400
-+++ libguestfs-1.44.1.mod/generator/actions_core.ml	2022-07-30 02:18:48.263365134 -0400
++++ libguestfs-1.44.1.mod/generator/actions_core.ml	2023-01-02 12:36:14.444499849 -0500
 @@ -210,7 +210,7 @@
  
    { defaults with
@@ -151,7 +152,7 @@ diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod
      shortdesc = "synchronize filesystem with host or remote filesystem";
 diff -ruN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/copy-in-out.c
 --- libguestfs-1.44.1.orig/lib/copy-in-out.c	2020-03-06 14:31:08.167077983 -0500
-+++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2022-07-30 02:15:15.046720389 -0400
++++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2023-01-02 12:36:14.445499829 -0500
 @@ -82,6 +82,8 @@
    snprintf (fdbuf, sizeof fdbuf, "/dev/fd/%d", fd);
  
@@ -172,7 +173,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/cop
        perrorf (g, "close (tar-output subprocess)");
 diff -ruN libguestfs-1.44.1.orig/lib/create.c libguestfs-1.44.1.mod/lib/create.c
 --- libguestfs-1.44.1.orig/lib/create.c	2020-03-09 08:54:05.032993277 -0400
-+++ libguestfs-1.44.1.mod/lib/create.c	2022-07-30 02:16:19.651401020 -0400
++++ libguestfs-1.44.1.mod/lib/create.c	2023-01-02 12:36:14.445499829 -0500
 @@ -249,6 +249,44 @@
    guestfs_int_string_is_valid ((format), 1, 16, \
                                 VALID_FLAG_ALPHA|VALID_FLAG_DIGIT, "")
@@ -288,7 +289,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/create.c libguestfs-1.44.1.mod/lib/create.c
     * try to interpret that as "foo" in the file:/// protocol.  To
 diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
 --- libguestfs-1.44.1.orig/lib/drives.c	2020-03-06 14:31:08.168077968 -0500
-+++ libguestfs-1.44.1.mod/lib/drives.c	2022-07-30 02:15:15.046720389 -0400
++++ libguestfs-1.44.1.mod/lib/drives.c	2023-01-02 12:36:14.445499829 -0500
 @@ -59,6 +59,7 @@
    enum discard discard;
    bool copyonread;
@@ -396,7 +397,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
    }
 diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
 --- libguestfs-1.44.1.orig/lib/guestfs-internal.h	2021-04-03 06:20:10.305684996 -0400
-+++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2022-07-30 02:15:15.047720369 -0400
++++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2023-01-02 12:36:14.445499829 -0500
 @@ -272,6 +272,7 @@
    enum discard discard;
    bool copyonread;
@@ -407,7 +408,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/li
  /* Extra hv parameters (from guestfs_config). */
 diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
 --- libguestfs-1.44.1.orig/lib/launch-direct.c	2020-03-06 14:31:08.171077925 -0500
-+++ libguestfs-1.44.1.mod/lib/launch-direct.c	2022-07-30 02:16:40.792969263 -0400
++++ libguestfs-1.44.1.mod/lib/launch-direct.c	2023-01-02 12:36:14.446499809 -0500
 @@ -83,6 +83,11 @@
      optargs.backingformat = drv->src.format;
    }
@@ -468,7 +469,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/l
        if (add_drive_standard_params (g, data, qopts, i, drv) == -1)
 diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
 --- libguestfs-1.44.1.orig/lib/qemu.c	2021-04-03 06:20:33.492458904 -0400
-+++ libguestfs-1.44.1.mod/lib/qemu.c	2022-07-30 02:15:15.047720369 -0400
++++ libguestfs-1.44.1.mod/lib/qemu.c	2023-01-02 12:36:14.446499809 -0500
 @@ -817,13 +817,16 @@
       * As a side-effect this deals with paths that contain ':' since
       * qemu will not process the ':' if the path begins with '/'.
@@ -495,7 +496,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
      return make_uri (g, "ftp", src->username, src->secret,
 diff -ruN libguestfs-1.44.1.orig/README.md libguestfs-1.44.1.mod/README.md
 --- libguestfs-1.44.1.orig/README.md	1969-12-31 19:00:00.000000000 -0500
-+++ libguestfs-1.44.1.mod/README.md	2022-07-30 02:15:15.047720369 -0400
++++ libguestfs-1.44.1.mod/README.md	2023-01-02 12:36:14.446499809 -0500
 @@ -0,0 +1,175 @@
 +Libguestfs is tools and a library for accessing and modifying guest
 +disk images.  For more information see the home page:
