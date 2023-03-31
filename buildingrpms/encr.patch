@@ -1,6 +1,6 @@
 diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsync.c
 --- libguestfs-1.44.1.orig/daemon/rsync.c	2020-03-06 14:31:08.121078643 -0500
-+++ libguestfs-1.44.1.mod/daemon/rsync.c	2023-01-02 12:38:47.696422611 -0500
++++ libguestfs-1.44.1.mod/daemon/rsync.c	2023-02-27 16:03:14.350079243 -0500
 @@ -39,7 +39,7 @@
  static int
  rsync (const char *src, const char *src_orig,
@@ -82,7 +82,7 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
  }
 diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
 --- libguestfs-1.44.1.orig/generator/actions_core.ml	2021-04-03 06:24:38.048065697 -0400
-+++ libguestfs-1.44.1.mod/generator/actions_core.ml	2023-01-02 12:36:14.444499849 -0500
++++ libguestfs-1.44.1.mod/generator/actions_core.ml	2023-02-27 16:03:14.447077299 -0500
 @@ -210,7 +210,7 @@
  
    { defaults with
@@ -152,7 +152,7 @@ diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod
      shortdesc = "synchronize filesystem with host or remote filesystem";
 diff -ruN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/copy-in-out.c
 --- libguestfs-1.44.1.orig/lib/copy-in-out.c	2020-03-06 14:31:08.167077983 -0500
-+++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2023-01-02 12:36:14.445499829 -0500
++++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2023-02-27 16:03:14.507076096 -0500
 @@ -82,6 +82,8 @@
    snprintf (fdbuf, sizeof fdbuf, "/dev/fd/%d", fd);
  
@@ -173,7 +173,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/cop
        perrorf (g, "close (tar-output subprocess)");
 diff -ruN libguestfs-1.44.1.orig/lib/create.c libguestfs-1.44.1.mod/lib/create.c
 --- libguestfs-1.44.1.orig/lib/create.c	2020-03-09 08:54:05.032993277 -0400
-+++ libguestfs-1.44.1.mod/lib/create.c	2023-01-02 12:36:14.445499829 -0500
++++ libguestfs-1.44.1.mod/lib/create.c	2023-02-27 16:03:14.508076076 -0500
 @@ -249,6 +249,44 @@
    guestfs_int_string_is_valid ((format), 1, 16, \
                                 VALID_FLAG_ALPHA|VALID_FLAG_DIGIT, "")
@@ -289,7 +289,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/create.c libguestfs-1.44.1.mod/lib/create.c
     * try to interpret that as "foo" in the file:/// protocol.  To
 diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
 --- libguestfs-1.44.1.orig/lib/drives.c	2020-03-06 14:31:08.168077968 -0500
-+++ libguestfs-1.44.1.mod/lib/drives.c	2023-01-02 12:36:14.445499829 -0500
++++ libguestfs-1.44.1.mod/lib/drives.c	2023-02-27 16:10:04.930855063 -0500
 @@ -59,6 +59,7 @@
    enum discard discard;
    bool copyonread;
@@ -366,13 +366,11 @@ diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
    if (STREQ (protocol, "file")) {
      if (data.servers != NULL) {
        error (g, _("you cannot specify a server with file-backed disks"));
-@@ -848,11 +889,24 @@
+@@ -848,11 +889,28 @@
        /* We have to check for the existence of the file since that's
         * required by the API.
         */
 -      if (access (filename, R_OK) == -1) {
--        perrorf (g, "%s", filename);
--        return -1;
 +      char *fptr;
 +      char *tmp;
 +      char *filesubstr;
@@ -390,6 +388,10 @@ diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
 +          perrorf (g, "%s", filename);
 +          return -1;
 +        }
++      }
++      if (strstr(filename, "s3:") == NULL && access (filename, R_OK) == -1) {
+         perrorf (g, "%s", filename);
+         return -1;
        }
 -
        drv = create_drive_file (g, &data);
@@ -397,7 +399,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
    }
 diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
 --- libguestfs-1.44.1.orig/lib/guestfs-internal.h	2021-04-03 06:20:10.305684996 -0400
-+++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2023-01-02 12:36:14.445499829 -0500
++++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2023-02-27 16:03:14.509076056 -0500
 @@ -272,6 +272,7 @@
    enum discard discard;
    bool copyonread;
@@ -408,7 +410,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/li
  /* Extra hv parameters (from guestfs_config). */
 diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
 --- libguestfs-1.44.1.orig/lib/launch-direct.c	2020-03-06 14:31:08.171077925 -0500
-+++ libguestfs-1.44.1.mod/lib/launch-direct.c	2023-01-02 12:36:14.446499809 -0500
++++ libguestfs-1.44.1.mod/lib/launch-direct.c	2023-02-27 16:03:14.510076036 -0500
 @@ -83,6 +83,11 @@
      optargs.backingformat = drv->src.format;
    }
@@ -469,8 +471,8 @@ diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/l
        if (add_drive_standard_params (g, data, qopts, i, drv) == -1)
 diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
 --- libguestfs-1.44.1.orig/lib/qemu.c	2021-04-03 06:20:33.492458904 -0400
-+++ libguestfs-1.44.1.mod/lib/qemu.c	2023-01-02 12:36:14.446499809 -0500
-@@ -817,13 +817,16 @@
++++ libguestfs-1.44.1.mod/lib/qemu.c	2023-02-27 16:13:25.247846027 -0500
+@@ -817,13 +817,19 @@
       * As a side-effect this deals with paths that contain ':' since
       * qemu will not process the ':' if the path begins with '/'.
       */
@@ -483,6 +485,9 @@ diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
 -    return path;
 +    if (strstr (src->u.path, "secret") == NULL) {
 +      path = realpath (src->u.path, NULL);
++      if (path == NULL && strstr(src->u.path, "file.filename=s3:")) {
++          path = strdup(strstr(src->u.path, "file.filename=") + strlen("file.filename="));
++      }
 +      if (path == NULL) {
 +        perrorf (g, _("realpath: could not convert ‘%s’ to absolute path"),
 +                 src->u.path);
@@ -496,7 +501,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
      return make_uri (g, "ftp", src->username, src->secret,
 diff -ruN libguestfs-1.44.1.orig/README.md libguestfs-1.44.1.mod/README.md
 --- libguestfs-1.44.1.orig/README.md	1969-12-31 19:00:00.000000000 -0500
-+++ libguestfs-1.44.1.mod/README.md	2023-01-02 12:36:14.446499809 -0500
++++ libguestfs-1.44.1.mod/README.md	2023-02-27 16:03:14.510076036 -0500
 @@ -0,0 +1,175 @@
 +Libguestfs is tools and a library for accessing and modifying guest
 +disk images.  For more information see the home page:
