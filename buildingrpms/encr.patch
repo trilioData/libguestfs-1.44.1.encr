@@ -1,16 +1,17 @@
 diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsync.c
 --- libguestfs-1.44.1.orig/daemon/rsync.c	2020-03-06 14:31:08.121078643 -0500
-+++ libguestfs-1.44.1.mod/daemon/rsync.c	2023-01-02 12:38:47.696422611 -0500
-@@ -39,7 +39,7 @@
++++ libguestfs-1.44.1.mod/daemon/rsync.c	2025-03-17 13:50:05.142071188 -0400
+@@ -39,7 +39,8 @@
  static int
  rsync (const char *src, const char *src_orig,
         const char *dest, const char *dest_orig,
 -       int archive, int deletedest)
-+       int archive, int deletedest, int nowholefile)
++       int archive, int deletedest, int nowholefile,
++       int sparse, const char *exclude_from)
  {
    const char *argv[MAX_ARGS];
    size_t i = 0;
-@@ -54,6 +54,12 @@
+@@ -54,6 +55,20 @@
    if (deletedest)
      ADD_ARG (argv, i, "--delete");
  
@@ -20,69 +21,95 @@ diff -ruN libguestfs-1.44.1.orig/daemon/rsync.c libguestfs-1.44.1.mod/daemon/rsy
 +  }
 +  ADD_ARG (argv, i, "--no-specials");
 +
++  if (sparse)
++    ADD_ARG (argv, i, "--sparse");
++  
++  if (exclude_from) {
++    ADD_ARG (argv, i, "--exclude-from");
++    ADD_ARG (argv, i, exclude_from);
++  }
++
    ADD_ARG (argv, i, src);
    ADD_ARG (argv, i, dest);
    ADD_ARG (argv, i, NULL);
-@@ -70,7 +76,7 @@
+@@ -70,7 +85,8 @@
  /* Takes optional arguments, consult optargs_bitmask. */
  int
  do_rsync (const char *src_orig, const char *dest_orig,
 -          int archive, int deletedest)
-+          int archive, int deletedest, int nowholefile)
++          int archive, int deletedest, int nowholefile,
++          int sparse, const char *exclude_from)
  {
    CLEANUP_FREE char *src = NULL, *dest = NULL;
  
-@@ -85,14 +91,16 @@
+@@ -85,14 +101,21 @@
      archive = 0;
    if (!(optargs_bitmask & GUESTFS_RSYNC_DELETEDEST_BITMASK))
      deletedest = 0;
+-
+-  return rsync (src, src_orig, dest, dest_orig, archive, deletedest);
 +  if (!(optargs_bitmask & GUESTFS_RSYNC_NOWHOLEFILE_BITMASK))
 +    nowholefile = 0;
- 
--  return rsync (src, src_orig, dest, dest_orig, archive, deletedest);
-+  return rsync (src, src_orig, dest, dest_orig, archive, deletedest, nowholefile);
++  if (!(optargs_bitmask & GUESTFS_RSYNC_SPARSE_BITMASK))
++    sparse = 0;
++  if (!(optargs_bitmask & GUESTFS_RSYNC_EXCLUDEFROM_BITMASK))
++    exclude_from = NULL;
++  return rsync (src, src_orig, dest, dest_orig, archive, deletedest,
++    nowholefile, sparse, exclude_from);
  }
  
  /* Takes optional arguments, consult optargs_bitmask. */
  int
  do_rsync_in (const char *remote, const char *dest_orig,
 -             int archive, int deletedest)
-+             int archive, int deletedest, int nowholefile)
++             int archive, int deletedest, int nowholefile,
++             int sparse, const char *exclude_from)
  {
    CLEANUP_FREE char *dest = NULL;
  
-@@ -106,14 +114,16 @@
+@@ -106,14 +129,22 @@
      archive = 0;
    if (!(optargs_bitmask & GUESTFS_RSYNC_IN_DELETEDEST_BITMASK))
      deletedest = 0;
 +  if (!(optargs_bitmask & GUESTFS_RSYNC_IN_NOWHOLEFILE_BITMASK))
 +    nowholefile = 0;
++  if (!(optargs_bitmask & GUESTFS_RSYNC_IN_SPARSE_BITMASK))
++    sparse = 0;
++  if (!(optargs_bitmask & GUESTFS_RSYNC_IN_EXCLUDEFROM_BITMASK))
++    exclude_from = NULL;
  
 -  return rsync (remote, remote, dest, dest_orig, archive, deletedest);
-+  return rsync (remote, remote, dest, dest_orig, archive, deletedest, nowholefile);
++  return rsync (remote, remote, dest, dest_orig, archive, deletedest,
++    nowholefile, sparse, exclude_from);
  }
  
  /* Takes optional arguments, consult optargs_bitmask. */
  int
  do_rsync_out (const char *src_orig, const char *remote,
 -              int archive, int deletedest)
-+              int archive, int deletedest, int nowholefile)
++              int archive, int deletedest, int nowholefile,
++              int sparse, const char *exclude_from)
  {
    CLEANUP_FREE char *src = NULL;
  
-@@ -127,6 +137,8 @@
+@@ -127,6 +158,13 @@
      archive = 0;
    if (!(optargs_bitmask & GUESTFS_RSYNC_OUT_DELETEDEST_BITMASK))
      deletedest = 0;
 +  if (!(optargs_bitmask & GUESTFS_RSYNC_OUT_NOWHOLEFILE_BITMASK))
 +    nowholefile = 0;
++  if (!(optargs_bitmask & GUESTFS_RSYNC_OUT_SPARSE_BITMASK))
++    sparse = 0;
++  if (!(optargs_bitmask & GUESTFS_RSYNC_OUT_EXCLUDEFROM_BITMASK))
++    exclude_from = NULL;
  
 -  return rsync (src, src_orig, remote, remote, archive, deletedest);
-+  return rsync (src, src_orig, remote, remote, archive, deletedest, nowholefile);
++  return rsync (src, src_orig, remote, remote, archive, deletedest,
++    nowholefile, sparse, exclude_from);
  }
 diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod/generator/actions_core.ml
 --- libguestfs-1.44.1.orig/generator/actions_core.ml	2021-04-03 06:24:38.048065697 -0400
-+++ libguestfs-1.44.1.mod/generator/actions_core.ml	2023-01-02 12:36:14.444499849 -0500
++++ libguestfs-1.44.1.mod/generator/actions_core.ml	2025-03-17 13:53:04.505579426 -0400
 @@ -210,7 +210,7 @@
  
    { defaults with
@@ -120,11 +147,11 @@ diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod
    { defaults with
      name = "rsync"; added = (1, 19, 29);
 -    style = RErr, [String (Pathname, "src"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"];
-+    style = RErr, [String (Pathname, "src"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"; OBool "nowholefile"];
++    style = RErr, [String (Pathname, "src"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"; OBool "nowholefile"; OBool "sparse"; OString "excludefrom"];
      optional = Some "rsync";
      test_excuse = "tests are in tests/rsync";
      shortdesc = "synchronize the contents of two directories";
-@@ -7556,11 +7563,15 @@
+@@ -7556,11 +7563,23 @@
  
  Delete files at the destination that do not exist at the source.
  
@@ -132,27 +159,141 @@ diff -ruN libguestfs-1.44.1.orig/generator/actions_core.ml libguestfs-1.44.1.mod
 +
 +Copies the delta changes from source file to destination file
 +
++=item C<sparse>
++
++Sparsely copies the files from source to destination
++
++=item C<excludefrom>
++
++contains the list of files to be excluded during rsync
++
  =back" };
  
    { defaults with
      name = "rsync_in"; added = (1, 19, 29);
 -    style = RErr, [String (PlainString, "remote"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"];
-+    style = RErr, [String (PlainString, "remote"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"; OBool "nowholefile"];
++    style = RErr, [String (PlainString, "remote"); String (Pathname, "dest")], [OBool "archive"; OBool "deletedest"; OBool "nowholefile"; OBool "sparse"; OString "excludefrom"];
      optional = Some "rsync";
      test_excuse = "tests are in tests/rsync";
      shortdesc = "synchronize host or remote filesystem with filesystem";
-@@ -7585,7 +7596,7 @@
+@@ -7585,7 +7604,7 @@
  
    { defaults with
      name = "rsync_out"; added = (1, 19, 29);
 -    style = RErr, [String (Pathname, "src"); String (PlainString, "remote")], [OBool "archive"; OBool "deletedest"];
-+    style = RErr, [String (Pathname, "src"); String (PlainString, "remote")], [OBool "archive"; OBool "deletedest"; OBool "nowholefile"];
++    style = RErr, [String (Pathname, "src"); String (PlainString, "remote")], [OBool "archive"; OBool "deletedest"; OBool "nowholefile"; OBool "sparse"; OString "excludefrom"];
      optional = Some "rsync";
      test_excuse = "tests are in tests/rsync";
      shortdesc = "synchronize filesystem with host or remote filesystem";
+diff -ruN libguestfs-1.44.1.orig/include/guestfs.h libguestfs-1.44.1.mod/include/guestfs.h
+--- libguestfs-1.44.1.orig/include/guestfs.h	2021-04-03 06:30:43.580447487 -0400
++++ libguestfs-1.44.1.mod/include/guestfs.h	2025-03-17 13:58:46.431950706 -0400
+@@ -1001,6 +1001,7 @@
+ #define GUESTFS_ADD_DRIVE_OPTS_DISCARD 10
+ #define GUESTFS_ADD_DRIVE_OPTS_COPYONREAD 11
+ #define GUESTFS_ADD_DRIVE_OPTS_BLOCKSIZE 12
++#define GUESTFS_ADD_DRIVE_OPTS_SECOBJECT 13
+ extern GUESTFS_DLL_PUBLIC int guestfs_add_drive_opts (guestfs_h *g, const char *filename, ...);
+ extern GUESTFS_DLL_PUBLIC int guestfs_add_drive_opts_va (guestfs_h *g, const char *filename, va_list args);
+ 
+@@ -1032,6 +1033,8 @@
+   int copyonread;
+ # define GUESTFS_ADD_DRIVE_OPTS_BLOCKSIZE_BITMASK (UINT64_C(1)<<12)
+   int blocksize;
++# define GUESTFS_ADD_DRIVE_OPTS_SECOBJECT_BITMASK (UINT64_C(1)<<13)
++  const char *secobject;
+ };
+ 
+ extern GUESTFS_DLL_PUBLIC int guestfs_add_drive_opts_argv (guestfs_h *g, const char *filename, const struct guestfs_add_drive_opts_argv *optargs);
+@@ -1687,6 +1690,7 @@
+ #define GUESTFS_DISK_CREATE_PREALLOCATION 2
+ #define GUESTFS_DISK_CREATE_COMPAT 3
+ #define GUESTFS_DISK_CREATE_CLUSTERSIZE 4
++#define GUESTFS_DISK_CREATE_SECOBJECT 5
+ extern GUESTFS_DLL_PUBLIC int guestfs_disk_create (guestfs_h *g, const char *filename, const char *format, int64_t size, ...);
+ extern GUESTFS_DLL_PUBLIC int guestfs_disk_create_va (guestfs_h *g, const char *filename, const char *format, int64_t size, va_list args);
+ 
+@@ -1702,6 +1706,8 @@
+   const char *compat;
+ # define GUESTFS_DISK_CREATE_CLUSTERSIZE_BITMASK (UINT64_C(1)<<4)
+   int clustersize;
++# define GUESTFS_DISK_CREATE_SECOBJECT_BITMASK (UINT64_C(1)<<5)
++  const char *secobject;
+ };
+ 
+ extern GUESTFS_DLL_PUBLIC int guestfs_disk_create_argv (guestfs_h *g, const char *filename, const char *format, int64_t size, const struct guestfs_disk_create_argv *optargs);
+@@ -3337,6 +3343,9 @@
+ #define GUESTFS_HAVE_RSYNC 1
+ #define GUESTFS_RSYNC_ARCHIVE 0
+ #define GUESTFS_RSYNC_DELETEDEST 1
++#define GUESTFS_RSYNC_NOWHOLEFILE 2
++#define GUESTFS_RSYNC_SPARSE 3
++#define GUESTFS_RSYNC_EXCLUDEFROM 4
+ extern GUESTFS_DLL_PUBLIC int guestfs_rsync (guestfs_h *g, const char *src, const char *dest, ...);
+ extern GUESTFS_DLL_PUBLIC int guestfs_rsync_va (guestfs_h *g, const char *src, const char *dest, va_list args);
+ 
+@@ -3346,6 +3355,12 @@
+   int archive;
+ # define GUESTFS_RSYNC_DELETEDEST_BITMASK (UINT64_C(1)<<1)
+   int deletedest;
++# define GUESTFS_RSYNC_NOWHOLEFILE_BITMASK (UINT64_C(1)<<2)
++  int nowholefile;
++# define GUESTFS_RSYNC_SPARSE_BITMASK (UINT64_C(1)<<3)
++  int sparse;
++# define GUESTFS_RSYNC_EXCLUDEFROM_BITMASK (UINT64_C(1)<<4)
++  const char *exclude_from;
+ };
+ 
+ extern GUESTFS_DLL_PUBLIC int guestfs_rsync_argv (guestfs_h *g, const char *src, const char *dest, const struct guestfs_rsync_argv *optargs);
+@@ -3353,6 +3368,9 @@
+ #define GUESTFS_HAVE_RSYNC_IN 1
+ #define GUESTFS_RSYNC_IN_ARCHIVE 0
+ #define GUESTFS_RSYNC_IN_DELETEDEST 1
++#define GUESTFS_RSYNC_IN_NOWHOLEFILE 2
++#define GUESTFS_RSYNC_IN_SPARSE 3
++#define GUESTFS_RSYNC_IN_EXCLUDEFROM 4
+ extern GUESTFS_DLL_PUBLIC int guestfs_rsync_in (guestfs_h *g, const char *remote, const char *dest, ...);
+ extern GUESTFS_DLL_PUBLIC int guestfs_rsync_in_va (guestfs_h *g, const char *remote, const char *dest, va_list args);
+ 
+@@ -3362,6 +3380,12 @@
+   int archive;
+ # define GUESTFS_RSYNC_IN_DELETEDEST_BITMASK (UINT64_C(1)<<1)
+   int deletedest;
++# define GUESTFS_RSYNC_IN_NOWHOLEFILE_BITMASK (UINT64_C(1)<<2)
++  int nowholefile;
++# define GUESTFS_RSYNC_IN_SPARSE_BITMASK (UINT64_C(1)<<3)
++  int sparse;
++# define GUESTFS_RSYNC_IN_EXCLUDEFROM_BITMASK (UINT64_C(1)<<4)
++  const char *exclude_from;
+ };
+ 
+ extern GUESTFS_DLL_PUBLIC int guestfs_rsync_in_argv (guestfs_h *g, const char *remote, const char *dest, const struct guestfs_rsync_in_argv *optargs);
+@@ -3369,6 +3393,9 @@
+ #define GUESTFS_HAVE_RSYNC_OUT 1
+ #define GUESTFS_RSYNC_OUT_ARCHIVE 0
+ #define GUESTFS_RSYNC_OUT_DELETEDEST 1
++#define GUESTFS_RSYNC_OUT_NOWHOLEFILE 2
++#define GUESTFS_RSYNC_OUT_SPARSE 3
++#define GUESTFS_RSYNC_OUT_EXCLUDEFROM 4
+ extern GUESTFS_DLL_PUBLIC int guestfs_rsync_out (guestfs_h *g, const char *src, const char *remote, ...);
+ extern GUESTFS_DLL_PUBLIC int guestfs_rsync_out_va (guestfs_h *g, const char *src, const char *remote, va_list args);
+ 
+@@ -3378,6 +3405,12 @@
+   int archive;
+ # define GUESTFS_RSYNC_OUT_DELETEDEST_BITMASK (UINT64_C(1)<<1)
+   int deletedest;
++# define GUESTFS_RSYNC_OUT_NOWHOLEFILE_BITMASK (UINT64_C(1)<<2)
++  int nowholefile;
++# define GUESTFS_RSYNC_OUT_SPARSE_BITMASK (UINT64_C(1)<<3)
++  int sparse;
++# define GUESTFS_RSYNC_OUT_EXCLUDEFROM_BITMASK (UINT64_C(1)<<4)
++  const char *exclude_from;
+ };
+ 
+ extern GUESTFS_DLL_PUBLIC int guestfs_rsync_out_argv (guestfs_h *g, const char *src, const char *remote, const struct guestfs_rsync_out_argv *optargs);
 diff -ruN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/copy-in-out.c
 --- libguestfs-1.44.1.orig/lib/copy-in-out.c	2020-03-06 14:31:08.167077983 -0500
-+++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2023-01-02 12:36:14.445499829 -0500
++++ libguestfs-1.44.1.mod/lib/copy-in-out.c	2025-03-17 13:40:26.772800692 -0400
 @@ -82,6 +82,8 @@
    snprintf (fdbuf, sizeof fdbuf, "/dev/fd/%d", fd);
  
@@ -173,7 +314,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/copy-in-out.c libguestfs-1.44.1.mod/lib/cop
        perrorf (g, "close (tar-output subprocess)");
 diff -ruN libguestfs-1.44.1.orig/lib/create.c libguestfs-1.44.1.mod/lib/create.c
 --- libguestfs-1.44.1.orig/lib/create.c	2020-03-09 08:54:05.032993277 -0400
-+++ libguestfs-1.44.1.mod/lib/create.c	2023-01-02 12:36:14.445499829 -0500
++++ libguestfs-1.44.1.mod/lib/create.c	2025-03-17 13:40:26.772800692 -0400
 @@ -249,6 +249,44 @@
    guestfs_int_string_is_valid ((format), 1, 16, \
                                 VALID_FLAG_ALPHA|VALID_FLAG_DIGIT, "")
@@ -289,7 +430,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/create.c libguestfs-1.44.1.mod/lib/create.c
     * try to interpret that as "foo" in the file:/// protocol.  To
 diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
 --- libguestfs-1.44.1.orig/lib/drives.c	2020-03-06 14:31:08.168077968 -0500
-+++ libguestfs-1.44.1.mod/lib/drives.c	2023-01-02 12:36:14.445499829 -0500
++++ libguestfs-1.44.1.mod/lib/drives.c	2025-03-17 13:40:26.772800692 -0400
 @@ -59,6 +59,7 @@
    enum discard discard;
    bool copyonread;
@@ -397,7 +538,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/drives.c libguestfs-1.44.1.mod/lib/drives.c
    }
 diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/lib/guestfs-internal.h
 --- libguestfs-1.44.1.orig/lib/guestfs-internal.h	2021-04-03 06:20:10.305684996 -0400
-+++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2023-01-02 12:36:14.445499829 -0500
++++ libguestfs-1.44.1.mod/lib/guestfs-internal.h	2025-03-17 13:40:26.772800692 -0400
 @@ -272,6 +272,7 @@
    enum discard discard;
    bool copyonread;
@@ -408,7 +549,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/guestfs-internal.h libguestfs-1.44.1.mod/li
  /* Extra hv parameters (from guestfs_config). */
 diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/launch-direct.c
 --- libguestfs-1.44.1.orig/lib/launch-direct.c	2020-03-06 14:31:08.171077925 -0500
-+++ libguestfs-1.44.1.mod/lib/launch-direct.c	2023-01-02 12:36:14.446499809 -0500
++++ libguestfs-1.44.1.mod/lib/launch-direct.c	2025-03-17 13:40:26.772800692 -0400
 @@ -83,6 +83,11 @@
      optargs.backingformat = drv->src.format;
    }
@@ -469,7 +610,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/launch-direct.c libguestfs-1.44.1.mod/lib/l
        if (add_drive_standard_params (g, data, qopts, i, drv) == -1)
 diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
 --- libguestfs-1.44.1.orig/lib/qemu.c	2021-04-03 06:20:33.492458904 -0400
-+++ libguestfs-1.44.1.mod/lib/qemu.c	2023-01-02 12:36:14.446499809 -0500
++++ libguestfs-1.44.1.mod/lib/qemu.c	2025-03-17 13:40:26.773800611 -0400
 @@ -817,13 +817,16 @@
       * As a side-effect this deals with paths that contain ':' since
       * qemu will not process the ':' if the path begins with '/'.
@@ -496,7 +637,7 @@ diff -ruN libguestfs-1.44.1.orig/lib/qemu.c libguestfs-1.44.1.mod/lib/qemu.c
      return make_uri (g, "ftp", src->username, src->secret,
 diff -ruN libguestfs-1.44.1.orig/README.md libguestfs-1.44.1.mod/README.md
 --- libguestfs-1.44.1.orig/README.md	1969-12-31 19:00:00.000000000 -0500
-+++ libguestfs-1.44.1.mod/README.md	2023-01-02 12:36:14.446499809 -0500
++++ libguestfs-1.44.1.mod/README.md	2025-03-17 13:40:26.773800611 -0400
 @@ -0,0 +1,175 @@
 +Libguestfs is tools and a library for accessing and modifying guest
 +disk images.  For more information see the home page:
